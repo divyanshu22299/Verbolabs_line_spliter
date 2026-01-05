@@ -36,9 +36,7 @@ export default function App() {
   const [sidebarOpen, setSidebarOpen] = useState(true);
 
 
-  const [showDevPopup, setShowDevPopup] = useState(() => {
-  return !localStorage.getItem("devPopupSeen");
-});
+const [showDevPopup, setShowDevPopup] = useState(true);
 
 
   useEffect(() => {
@@ -619,10 +617,8 @@ export default function App() {
           </div>
         ))}
       </div>
-    </div>
-  );
 
-  {showDevPopup && (
+ {showDevPopup && (
   <div className="dev-popup-backdrop">
     <div className="dev-popup">
       <h2>🚧 Development Notice</h2>
@@ -635,10 +631,8 @@ export default function App() {
 
       <button
         className="dev-popup-btn"
-        onClick={() => {
-          localStorage.setItem("devPopupSeen", "true");
-          setShowDevPopup(false);
-        }}
+        onClick={() => setShowDevPopup(false)}
+
       >
         I Understand
       </button>
@@ -646,4 +640,10 @@ export default function App() {
   </div>
 )}
 
+
+
+    </div>
+  );
+
+ 
 }
