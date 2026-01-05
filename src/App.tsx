@@ -283,7 +283,15 @@ export default function App() {
   };
 
   return (
-    <div className="app">
+    <div
+  className="app"
+  style={{
+    backgroundColor: "#0f172a",
+    color: "#e5e7eb",
+    minHeight: "100vh"
+  }}
+>
+
       {/* Sidebar */}
       <div className={`sidebar ${sidebarOpen ? 'open' : 'closed'}`}>
         <div className="sidebar-header">
