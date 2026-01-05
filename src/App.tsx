@@ -35,6 +35,12 @@ export default function App() {
   const [currentTab, setCurrentTab] = useState<"all" | "errors" | "fixed">("all");
   const [sidebarOpen, setSidebarOpen] = useState(true);
 
+
+  const [showDevPopup, setShowDevPopup] = useState(() => {
+  return !localStorage.getItem("devPopupSeen");
+});
+
+
   useEffect(() => {
     document.documentElement.setAttribute("data-theme", theme);
   }, [theme]);
@@ -313,6 +319,13 @@ export default function App() {
             </svg>
           </button>
         </div>
+
+
+
+
+
+
+
 
         <div className="stats-grid">
           <div className="stat-card total">
@@ -608,4 +621,29 @@ export default function App() {
       </div>
     </div>
   );
+
+  {showDevPopup && (
+  <div className="dev-popup-backdrop">
+    <div className="dev-popup">
+      <h2>🚧 Development Notice</h2>
+      <p>
+        This website is currently in an active development phase.
+        <br />
+        Please verify all subtitle corrections carefully
+        before final use.
+      </p>
+
+      <button
+        className="dev-popup-btn"
+        onClick={() => {
+          localStorage.setItem("devPopupSeen", "true");
+          setShowDevPopup(false);
+        }}
+      >
+        I Understand
+      </button>
+    </div>
+  </div>
+)}
+
 }
