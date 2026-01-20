@@ -3,6 +3,45 @@ import { parseSRT, fixSubtitles, buildSRT } from "./engine/srt";
 import { isForbiddenSplit } from "./engine/rules";
 import "./App.css";
 
+
+
+
+function visibleLength(s: string): number {
+  return s.replace(/(\{[^}]*\}|<[^>]+>)/g, "").length;
+}
+
+function isBadSplit(lines: string[]): boolean {
+  if (lines.length !== 2) return false;
+
+  const left = lines[0].trim();
+  const right = lines[1].trim();
+
+  if (!left || !right) return true;
+
+  const leftWords = left.split(/\s+/);
+  const rightWords = right.split(/\s+/);
+
+  const lastLeft = leftWords[leftWords.length - 1].toLowerCase();
+  const firstRight = rightWords[0].toLowerCase();
+
+  const BAD_WORDS = ["and", "but", "or", "so"];
+
+  // ❌ Line ends with conjunction
+  if (BAD_WORDS.includes(lastLeft)) return true;
+
+  // ❌ Next line starts with conjunction
+  if (BAD_WORDS.includes(firstRight)) return true;
+
+  // ❌ Linguistically glued split (from your rules engine)
+  if (isForbiddenSplit(lastLeft, firstRight)) return true;
+
+  // ❌ Too short first or second line (ugly pyramid)
+  if (leftWords.length < 2 || rightWords.length < 2) return true;
+
+  return false;
+}
+
+
 interface PreviewBlock {
   index: number;
   time: string;
@@ -62,70 +101,36 @@ const [showDevPopup, setShowDevPopup] = useState(true);
   function analyze() {
     setIsLoading(true);
     setTimeout(() => {
-      try {
-        const parsed = parseSRT(input);
-        const analyzed: PreviewBlock[] = parsed.map((s) => {
-          let invalid = s.text.length > 2 || s.text.some((l) => l.length > 42);
-          if (s.text.length === 1 && s.text[0].length > 42 && s.text[0].includes(',')) {
-            invalid = false;
-          }
-          if (s.text.length === 2) {
-            const left = s.text[0];
-            const right = s.text[1];
-            const leftWords = left.trim().split(/\s+/);
-            const rightWords = right.trim().split(/\s+/);
-            if (leftWords.length < 2 || rightWords.length < 2) {
-              invalid = true;
-            }
-            const lastLeft = leftWords[leftWords.length - 1]?.toLowerCase();
-            const firstRight = rightWords[0];
-            const BAD_LINE_END_WORDS = ["and", "but", "or", "so"];
-            if (BAD_LINE_END_WORDS.includes(lastLeft) || isForbiddenSplit(lastLeft, firstRight)) {
-              invalid = true;
-            }
-          }
-          return {
-            index: s.index,
-            time: s.time,
-            lines: s.text,
-            isInvalid: invalid,
-            isSplit: false,
-          };
-        });
-        setPreview(analyzed);
-        calculateStats(analyzed);
-        showToast("Analysis complete", "success");
-      } catch (error) {
-        showToast("Invalid SRT format", "error");
-      } finally {
-        setIsLoading(false);
-      }
-    }, 500);
-  }
+     try {
+  const parsed = parseSRT(input);
 
-  function fixAll() {
-    setIsLoading(true);
-    setTimeout(() => {
-      try {
-        const parsed = parseSRT(input);
-        const fixed = fixSubtitles(parsed);
-        const previewBlocks: PreviewBlock[] = fixed.map((s) => ({
-          index: s.index,
-          time: s.time,
-          lines: s.text,
-          isInvalid: false,
-          isSplit: !!s.wasSplit,
-        }));
-        setInput(buildSRT(fixed));
-        setPreview(previewBlocks);
-        calculateStats(previewBlocks);
-        showToast("All subtitles fixed successfully", "success");
-      } catch (error) {
-        showToast("Error fixing subtitles", "error");
-      } finally {
-        setIsLoading(false);
-      }
-    }, 800);
+  const analyzed: PreviewBlock[] = parsed.map((s) => {
+let invalid =
+  s.text.length > 2 ||
+  s.text.some((l) => visibleLength(l) > 42);
+
+if (s.text.length === 2 && isBadSplit(s.text)) {
+  invalid = true;
+}
+
+    return {
+      index: s.index,
+      time: s.time,
+      lines: s.text,
+      isInvalid: invalid,
+      isSplit: false,
+    };
+  });
+
+  setPreview(analyzed);
+  calculateStats(analyzed);
+  showToast("Analysis complete", "success");
+} catch (error) {
+  showToast("Invalid SRT format", "error");
+} finally {
+  setIsLoading(false);
+}
+    }, 500);
   }
 
   function fixOne(originalIndex: number) {
@@ -176,30 +181,12 @@ const [showDevPopup, setShowDevPopup] = useState(true);
             const newIndex = i + 1;
 
             // --- Re-run Validation Logic ---
-            let invalid = block.lines.length > 2 || block.lines.some((l) => l.length > 42);
+            let invalid =
+              block.lines.length > 2 ||
+              block.lines.some((l) => visibleLength(l) > 42);
+
             
-            if (block.lines.length === 1 && block.lines[0].length > 42 && block.lines[0].includes(',')) {
-                invalid = false;
-            }
             
-            if (block.lines.length === 2) {
-                const left = block.lines[0];
-                const right = block.lines[1];
-                const leftWords = left.trim().split(/\s+/);
-                const rightWords = right.trim().split(/\s+/);
-                
-                if (leftWords.length < 2 || rightWords.length < 2) {
-                    invalid = true;
-                } else {
-                    const lastLeft = leftWords[leftWords.length - 1]?.toLowerCase();
-                    const firstRight = rightWords[0];
-                    const BAD_LINE_END_WORDS = ["and", "but", "or", "so"];
-                    
-                    if (BAD_LINE_END_WORDS.includes(lastLeft) || isForbiddenSplit(lastLeft, firstRight)) {
-                        invalid = true;
-                    }
-                }
-            }
             // -------------------------------
 
             return {
@@ -388,16 +375,6 @@ const [showDevPopup, setShowDevPopup] = useState(true);
             )}
             Analyze
           </button>
-          <button className="action-btn success" onClick={fixAll} disabled={isLoading || !input}>
-            {isLoading ? (
-              <div className="btn-spinner"></div>
-            ) : (
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <polyline points="20 6 9 17 4 12"></polyline>
-              </svg>
-            )}
-            Fix All
-          </button>
         </div>
 
         <div className="tools-section">
@@ -555,7 +532,7 @@ const [showDevPopup, setShowDevPopup] = useState(true);
                   if (currentTab === "errors") return b.isInvalid;
                   if (currentTab === "fixed") return b.isSplit;
                   return true;
-                }).map((b) => (
+                }).map((b,i) => (
                   <div
                     key={b.index}
                     data-index={b.index}
@@ -565,7 +542,7 @@ const [showDevPopup, setShowDevPopup] = useState(true);
                       <div className="card-index">#{b.index}</div>
                       <div className="card-time">{b.time}</div>
                       {b.isInvalid && (
-                        <button className="fix-btn" onClick={() => fixOne(b.index - 1)} disabled={isLoading}>
+                        <button className="fix-btn" onClick={() => fixOne(i)} disabled={isLoading}>
                           Fix
                         </button>
                       )}
@@ -574,8 +551,13 @@ const [showDevPopup, setShowDevPopup] = useState(true);
                       {b.lines.map((l, j) => (
                         <div key={j} className="subtitle-line">
                           <span className="line-text">{l}</span>
-                          <span className={`line-counter ${l.length > 42 ? 'danger' : l.length > 35 ? 'warning' : ''}`}>
-                            {l.length}/42
+                            <span
+                              className={`line-counter ${
+                                visibleLength(l) > 42 ? "danger" :
+                                visibleLength(l) > 35 ? "warning" : ""
+                              }`}
+                            >
+                            {l.replace(/(\{[^}]*\}|<[^>]+>)/g, "").length}/42
                           </span>
                         </div>
                       ))}
