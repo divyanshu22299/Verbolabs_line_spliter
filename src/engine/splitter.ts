@@ -314,7 +314,7 @@ export function splitToLines(text: string): string[] {
     while (visibleLength(rem) > MAX_CHARS) {
       // try to cut at last space within limit
       let cutPos = -1;
-      let acc = "";
+      //let acc = "";
       const toks = tokenize(rem);
       let i = 0;
       for (; i < toks.length; i++) {
